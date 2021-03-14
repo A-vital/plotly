@@ -1,111 +1,108 @@
-function barchart() {
-    
-    d3.json("/samples.json").then((importedData) => {
-        var data = importedData;
-        //console.log(data.samples);
+function build(sample)
+{
+    d3.json("samples.json").then((demo_info) => 
+    {
+        console.log(demo_info);
+        var sampleMetadata = demo_info.metadata;
 
-    var hovertext = Object.values(data.samples[0].otu_labels);
-    //console.log(hovertext);
+        var results = sampleMetadata.filter(s=>s.id == sample);
+        console.log(results);
 
-    
-    var label = Object.values(data.samples[0].otu_ids).sort((a, b) => b - a);
-    var sliced = label.slice(0, 10);
-    //console.log(sliced);
-    var arrayofString = sliced.map(otuID => `OTU ${otuID}`);
-    //console.log(arrayofString);
+        let panel = d3.select("#sample-metadata");
+        panel.html("");
+      
+        Object.entries(results[0]).forEach(([key,value])=>
+        {
+            panel.append("p").text(`${key}:${value}`);
+        });
+    });
+};
 
-    var value = Object.values(data.samples[0].sample_values);
-    //console.log(value);
 
-    var trace0 = [{
-      x: value,
-      y: arrayofString,
-      type: "bar",
-      text: hovertext,
-      orientation: 'h'
-    }];
-  
-    Plotly.newPlot("bar", trace0);
-  })};
+//Build Plots
+function buildGraph(sample)
+{
+    d3.json("samples.json").then((otu_data) => 
+    {
+        console.log(otu_data);
+        var samples = otu_data.samples;
+        var results = samples.filter(s=>s.id == sample);
+        console.log("results");
+        console.log(results);
+        var graphData = results[0];
+        console.log(graphData);
+        
+      //Grab top 10 OTUs for the plots
+        var sample_values = graphData.sample_values;
+        var otu_ids = graphData.otu_ids;
+        var otu_labels = graphData.otu_labels;
+      
+       // Build Bar chart
+        var barTrace = 
+        {
+          x: sample_values.slice(0,10).reverse(),
+          y: otu_ids.slice(0,10).map(value=>`OTU ID ${value}`).reverse(),
+          type: "bar",
+          text: otu_labels.slice(0,10).reverse(),
+          orientation: "h"
+        };
+        var barData = [barTrace];
+        var barLayout = 
+        {
+          title: "Bar",
+          xaxis: { title: "Sample Values"},
+        };
+        
+        Plotly.newPlot("bar", barData, barLayout);
+        
+        //Create Bubble Plot 
+        var bubbleTrace =  
+        {
+          x: otu_ids,
+          y: sample_values,
+          mode: "markers",
+          marker: 
+          {
+              color: otu_ids,
+              size: sample_values
+          },
+          text: otu_labels
+        };
+        var bubbleData = [bubbleTrace];
+        var bubbleLayout = 
+        {
+          title: "Bubble",
+          xaxis: { title: "otu_id"},
+          yaxis: { title: "sample_value"}
+        };
+        Plotly.newPlot("bubble", bubbleData, bubbleLayout);
 
-barchart();
+    });
+};
 
-function bubbly() {
-    d3.json("/samples.json").then((importedData) => {
-        var data = importedData;
-        //console.log(data.samples);
+//Populate dropdown and create option change to have tables update accoriding to ID 
+function init()
+{
+    var dropdownMenu = d3.select("#selDataset");
+    d3.json("samples.json").then((sample_data)=>
+        {
+            console.log(sample_data.names);
+            var sampleNames = sample_data.names;
+            sampleNames.forEach((sample)=>
+            {
+                dropdownMenu.append("option").text(sample).property("value",sample);
+            });
+          //build inital graphs with the first sample in list
+            var first_sample = sampleNames[0]
+            build(first_sample)
+            buildGraph(first_sample)
+        });
+}
+        
+init();
 
-    var id = Object.values(data.samples[0].otu_ids)
-
-    var value = Object.values(data.samples[0].sample_values);
-    //console.log(value);
-
-    var hovertext = Object.values(data.samples[0].otu_labels);
-    //console.log(hovertext);
-
-    var trace1 = {
-        x: id,
-        y: value,
-        mode: 'markers',
-        text: hovertext,
-        marker: {
-          size: value,
-          color: id
+function optionChanged(sample) 
+        {
+          build(sample);
+          buildGraph(sample);
         }
-      };
-      
-      var data = [trace1];
-      
-      var layout = {
-        title: 'OTU ID',
-        showlegend: false,
-        height: 600,
-        width: 1200
-      };
-      
-      Plotly.newPlot('bubble', data, layout);
-    })};
-
-bubbly(); 
-
-function meta(sample) {
-  var metadata = "/metadata/" + sample;
-  //console.log(metadata);
-  var panel = d3.select("#sample-metadata");
-  d3.json(metadata).then(function (data) {
-    Object.entries(data).forEach(([key, value]) => {
-      panel.append("h5").text(`${key}: ${value}`);
-    });
-  });
-}
-
-// This function is called when a dropdown menu item is selected
-function updatePlotly() {
-
-  // Call updatePlotly() when a change takes place to the DOM
-  var selection = d3.select("#selDataset");
-
-  d3.json('samples.json').then((data)=>{
-    var demoID = data.names;
-    demoID.forEach((sampleNames) => {
-      selection
-        .append('option')
-        .text(sampleNames)
-        .property('value', sampleNames);
-    });
-
-    var firstSample = data[0];
-    barchart(firstSample);
-    bubbly(firstSample);
-    meta(firstSample);
-    //console.log(firstSample);
-  });
-}
-
-function onChange(newSelection) {
-  barchart(newSelection);
-  bubbly(newSelection);
-  meta(newSelection);
-}
-
-updatePlotly();
