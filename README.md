@@ -1,4 +1,4 @@
-# Plotly
+# Plotly Interactive Dashboard
 ![bacteria](https://user-images.githubusercontent.com/71558024/111071892-a4439300-84ae-11eb-804d-88677849b05b.jpg)
 
 
